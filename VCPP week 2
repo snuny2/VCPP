@@ -21,7 +21,7 @@ int main() {
 	while (1) {
 		printcom(); // printcom 사용해서 간단하게 command>_ 출력
 
-		scanf("%c", &userinput);
+		scanf(" %c", &userinput);
 		
 		switch (userinput) {
 
