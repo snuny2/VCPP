@@ -1,14 +1,12 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
-#include <conio.h>
-
 
 void Splash() {
-	printf("202207056 김재표 VCPP\n"); // 간단하게 Splash만 사용해서 출력할수잇게 만들어놓기
+	printf("202207056 김재표 VCPP\n"); // splash 출력 함수
 }
 
 void printcom() {
-	printf("command>"); // 간단하게 print command를 사용할수있는 기반
+	printf("command>"); // 앞부분 command>를위한 함수
 }
 
 int main() {
@@ -16,10 +14,10 @@ int main() {
 	char userinput; // 직접 입력
 
 
-	Splash(); // Splash 사용해서 간단하게 출력
+	Splash(); // 위에함수호출
 
 	while (1) {
-		printcom(); // printcom 사용해서 간단하게 command>_ 출력
+		printcom(); // 위에 정의해놓은 함수호출
 
 		scanf(" %c", &userinput);
 		
