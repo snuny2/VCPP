@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{77ff8962-f1fa-4ef6-bae1-908c98b79ba9}</ProjectGuid>
-    <RootNamespace>MidtermExam</RootNamespace>
+    <ProjectGuid>{76d5739d-8c36-414f-86cf-c37d43e01513}</ProjectGuid>
+    <RootNamespace>Ryan</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -127,17 +127,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Bonobono.cpp" />
+    <ClInclude Include="yuhanCG.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="resource.h" />
+    <Image Include="..\Ryan.png" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="Midterm Exam.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <Image Include="BONOBONO1.png" />
-    <Image Include="bonobono2.png" />
+    <ClCompile Include="yuhanCG.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

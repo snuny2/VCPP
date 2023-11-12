@@ -15,26 +15,18 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Bonobono.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="resource.h">
+    <ClInclude Include="yuhanCG.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="Midterm Exam.rc">
-      <Filter>리소스 파일</Filter>
-    </ResourceCompile>
+    <ClCompile Include="yuhanCG.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Image Include="BONOBONO1.png">
-      <Filter>리소스 파일</Filter>
-    </Image>
-    <Image Include="bonobono2.png">
-      <Filter>리소스 파일</Filter>
+    <Image Include="..\Ryan.png">
+      <Filter>소스 파일</Filter>
     </Image>
   </ItemGroup>
 </Project>

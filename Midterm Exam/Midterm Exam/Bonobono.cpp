@@ -1,158 +1,199 @@
 ﻿#include <windows.h>
-#include <WinUser.h>
+#include <tchar.h>
+#include <string>
 
-LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+#define ID_BONOBONO1 101
+#define ID_BONOBONO2 102
 
-HBITMAP hBitmap = NULL;
+// 리소스파일로 출력하기 왜 안돼지 + 이미지
+// 오기생겨 해보는데 이유를 모르겠다
+// 라이언 하면서 찾아봐야겠다
+
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+LRESULT CALLBACK DrawingAreaProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+// 드로잉 영역 윈도우 핸들
 HWND hDrawingArea = NULL;
 
-LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-	
-	switch (message) {
-	case WM_CREATE: {
-		int buttonWidth = 160;
-		int buttonHeight = 64;
-		int margin = 16;
+HINSTANCE hInstance = GetModuleHandle(NULL);
 
-		RECT rcClient;
-		GetClientRect(hWnd, &rcClient);
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    // 윈도우 클래스 등록
+    WNDCLASS wc = { 0 };
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = hInstance;
+    wc.hbrBackground = CreateSolidBrush(RGB(255, 240, 200)); // 배경색 설정
+    wc.lpszClassName = L"BoxWindowClass";
 
-		// 박스 컨트롤 생성
-		hBox = CreateWindow(L"STATIC", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
-			8, 8, rcClient.right - 16, rcClient.bottom - 16, hWnd, NULL, NULL, NULL);
+    if (!RegisterClass(&wc)) {
+        return 1;
+    }
 
-		// 박스의 배경색을 뷰의 색상과 같게 설정
-		SendMessage(hBox, WM_SETTEXT, 0, (LPARAM)L"");
-		SendMessage(hBox, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
-		SendMessage(hBox, WM_CTLCOLORSTATIC, (WPARAM)GetDC(hBox), (LPARAM)hBoxBackground);
+    // 윈도우 생성
+    HWND hwnd = CreateWindow(L"BoxWindowClass", L"Button Example", WS_OVERLAPPEDWINDOW, 100, 100, 816, 536, NULL, NULL, hInstance, NULL);
+    // 창 크기를 고정
+    SetWindowPos(hwnd, NULL, 0, 0, 800, 480, SWP_NOMOVE | SWP_NOZORDER);
 
-		for (int i = 0; i < 5; i++) {
-			int x = margin;
-			int y = margin + i * (buttonHeight + margin); // 세로로 나열
+    if (hwnd == NULL) {
+        return 2;
+    }
 
-			LPCWSTR buttonText; // 버튼의 텍스트를 설정할 변수
+    // 윈도우 표시
+    ShowWindow(hwnd, nCmdShow);
+    UpdateWindow(hwnd);
 
-			// 버튼의 텍스트를 설정
-			switch (i) {
-			case 0:
-				buttonText = L"Box";
-				break;
-			case 1:
-				buttonText = L"Circle";
-				break;
-			case 2:
-				buttonText = L"bonobono";
-				break;
-			case 3:
-				buttonText = L"Ryan";
-				break;
-			case 4:
-				buttonText = L"Cube";
-				break;
-			default:
-				buttonText = L"Button";
-				break;
-			}
+    // 기본 마우스 커서 설정 (화살표)
+    HCURSOR hCursor = LoadCursor(NULL, IDC_ARROW);
+    SetCursor(hCursor);
 
-			// 버튼 컨트롤 생성
-			hButtons[i] = CreateWindow(L"BUTTON", buttonText, WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-				x, y, buttonWidth, buttonHeight, hWnd, (HMENU)(i + 1), NULL, NULL);
-		}
+    // 5개의 버튼 추가
+    int buttonCount = 5;
+    int buttonWidth = (800 - (buttonCount + 1) * 18) / buttonCount; // 가로 크기 계산
+    int buttonHeight = 55;
+    int margin = 16;
+    int xStart = 14; // 시작 위치 설정
+    int y = 15; // 버튼이 그려질 y 위치
+    LPCWSTR buttonNames[] = { L"Box", L"Circle", L"Bonobono", L"Ryan", L"Cube" };
 
-		// 드로잉 영역 컨트롤 생성
-		int drawingAreaWidth = 585;
-		int drawingAreaHeight = rcClient.bottom - 2 * margin;
-		int drawingAreaX = rcClient.right - drawingAreaWidth - margin;
-		int drawingAreaY = margin;
+    for (int i = 0; i < buttonCount; i++) {
+        HWND hButton = CreateWindow(L"BUTTON", buttonNames[i], WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+            xStart, y, buttonWidth, buttonHeight, hwnd, NULL, hInstance, NULL);
+        xStart += buttonWidth + margin;
+    }
 
-		hDrawingArea = CreateWindow(L"STATIC", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER | SS_NOTIFY,
-			drawingAreaX, drawingAreaY, drawingAreaWidth, drawingAreaHeight, hWnd, NULL, NULL, NULL);
+    // 드로잉 영역 윈도우 생성
+    hDrawingArea = CreateWindow(L"STATIC", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
+        7, 77, 769, 356, hwnd, NULL, hInstance, NULL);
+    SetWindowLongPtr(hDrawingArea, GWLP_WNDPROC, (LONG_PTR)DrawingAreaProc);
+    // 드로잉 영역의 배경색을 흰색으로 설정
+    SetClassLongPtr(hDrawingArea, GCLP_HBRBACKGROUND, (LONG_PTR)GetStockObject(WHITE_BRUSH));
 
-		// 드로잉 영역의 배경색을 설정
-		SendMessage(hDrawingArea, WM_SETTEXT, 0, (LPARAM)L"");
-		SendMessage(hDrawingArea, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
-		SendMessage(hDrawingArea, WM_CTLCOLORSTATIC, (WPARAM)GetDC(hDrawingArea), (LPARAM)hDrawingAreaBackground);
+    MSG msg = { 0 };
+    while (GetMessage(&msg, NULL, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
 
-		// 드로잉 영역의 마우스 커서 설정
-		HCURSOR hCrossCursor = LoadCursor(NULL, IDC_CROSS);
-		SetClassLongPtr(hDrawingArea, GCLP_HCURSOR, (LONG_PTR)hCrossCursor);
-
-		return 0;
-	}
-	case WM_COMMAND: {
-		switch (LOWORD(wParam)) {
-		case 3: // "bonobono" 버튼 클릭
-			hBitmap = (HBITMAP)LoadImage(NULL, L"img/bonobono1.png", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-			if (hBitmap) {
-				InvalidateRect(hDrawingArea, NULL, TRUE);
-			}
-			break;
-			// 다른 버튼 클릭 이벤트 처리
-			// ...
-			break;
-		}
-	case WM_CTLCOLORSTATIC: {
-		if ((HWND)lParam == hBox) {
-			// 박스의 배경색을 설정
-			return (LRESULT)hBoxBackground;
-		}
-		else if ((HWND)lParam == hDrawingArea) {
-			// 드로잉 영역의 배경색을 설정
-			return (LRESULT)hDrawingAreaBackground;
-		}
-		break;
-	}
-	case WM_PAINT: {
-		PAINTSTRUCT ps;
-		HDC hdc = BeginPaint(hDrawingArea, &ps);
-
-		if (hBitmap) {
-			BITMAP bm;
-			GetObject(hBitmap, sizeof(BITMAP), &bm);
-			HDC hdcMem = CreateCompatibleDC(hdc);
-			SelectObject(hdcMem, hBitmap);
-			StretchBlt(hdc, 0, 0, bm.bmWidth, bm.bmHeight, hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
-			DeleteDC(hdcMem);
-		}
-
-		EndPaint(hDrawingArea, &ps);
-		break;
-	}
-	case WM_DESTROY: {
-		if (hBitmap) {
-			DeleteObject(hBitmap);
-		}
-		PostQuitMessage(0);
-		break;
-	}
-	default:
-		return DefWindowProc(hWnd, message, wParam, lParam);
-	}
-				   return 0;
-	}
+    return msg.wParam;
 }
-	int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-		WNDCLASS wc = { 0 };
-		wc.lpfnWndProc = WndProc;
-		wc.hInstance = hInstance;
-		wc.hbrBackground = CreateSolidBrush(RGB(255, 240, 200));
-		wc.lpszClassName = L"중간고사"; // RegisterClass에서 클래스 이름 수정
-		RegisterClass(&wc);
 
-		HWND hWnd = CreateWindow(L"중간고사", L"My Window", WS_OVERLAPPEDWINDOW, 0, 0, 800, 480, NULL, NULL, hInstance, NULL);
-		SetWindowLong(hWnd, GWL_STYLE, GetWindowLong(hWnd, GWL_STYLE) & ~WS_THICKFRAME);
-		SetWindowLong(hWnd, GWL_STYLE, GetWindowLong(hWnd, GWL_STYLE) & ~WS_MAXIMIZEBOX);
+LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    switch (msg) {
+    case WM_PAINT: {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hwnd, &ps);
 
-		HCURSOR hCursor = LoadCursor(NULL, IDC_ARROW);
-		SetCursor(hCursor);
+        // 박스 그리기
+        RECT boxRect;
+        boxRect.left = 8; // 왼쪽 마진 8px
+        boxRect.top = 8; // 위쪽 마진 8px
+        boxRect.right = ps.rcPaint.right - 8; // 오른쪽 마진 8px
+        boxRect.bottom = ps.rcPaint.bottom - 8; // 아래쪽 마진 8px
 
-		ShowWindow(hWnd, nCmdShow);
-		UpdateWindow(hWnd);
+        HBRUSH boxBrush = CreateSolidBrush(RGB(255, 240, 200)); // 뷰의 배경색과 동일
+        FillRect(hdc, &boxRect, boxBrush);
 
-		MSG msg = { 0 };
-		while (GetMessage(&msg, NULL, 0, 0)) {
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-		return (int)msg.wParam;
-	}
+        // 테두리 그리기
+        HPEN hPen = CreatePen(PS_SOLID, 2, RGB(0, 0, 0)); // 검정색 테두리
+        SelectObject(hdc, hPen);
+        SelectObject(hdc, GetStockObject(NULL_BRUSH)); // 테두리만 그리고 내부는 투명
+        Rectangle(hdc, boxRect.left, boxRect.top, boxRect.right, boxRect.bottom);
+
+        EndPaint(hwnd, &ps);
+        break;
+    }
+    case WM_CREATE: {
+        // 이미지 리소스 로드
+        HBITMAP hBitmap = (HBITMAP)LoadImage(GetModuleHandle(NULL), MAKEINTRESOURCE(ID_BONOBONO1), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+
+        if (hBitmap) {
+            // 이미지를 화면에 표시
+            HDC hdc = GetDC(hwnd);
+            HDC hdcMem = CreateCompatibleDC(hdc);
+            HBITMAP hBitmapOld = (HBITMAP)SelectObject(hdcMem, hBitmap);
+            BitBlt(hdc, 0, 0, 600, 400, hdcMem, 0, 0, SRCCOPY);
+            SelectObject(hdcMem, hBitmapOld);
+            DeleteDC(hdcMem);
+            ReleaseDC(hwnd, hdc);
+        }
+        else {
+            DWORD error = GetLastError();
+            std::wstring errorMsg = L"이미지 리소스를 로드하는 데 실패했습니다. 오류 코드: " + std::to_wstring(error);
+            MessageBox(hwnd, errorMsg.c_str(), _T("오류"), MB_ICONERROR);
+        }
+
+        return 0;
+    }
+    case WM_CLOSE:
+        DestroyWindow(hwnd);
+        return 0;
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        return 0;
+    default:
+        return DefWindowProc(hwnd, msg, wParam, lParam);
+    }
+}
+
+LRESULT CALLBACK DrawingAreaProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+    switch (msg) {
+    case WM_PAINT: {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hwnd, &ps);
+
+        // 드로잉 영역을 그리거나 그리기 작업을 수행
+        // 여기에 원하는 드로잉 로직을 추가하십시오.
+
+        EndPaint(hwnd, &ps);
+        break;
+    }
+    case WM_SETCURSOR: {
+        // 드로잉 영역에 마우스가 들어갈 때 커서를 십자로 설정
+        if (LOWORD(lParam) == HTCLIENT) {
+            HCURSOR hCursor = LoadCursor(NULL, IDC_CROSS);
+            SetCursor(hCursor);
+            return TRUE; // 이벤트 처리 완료
+        }
+        break;
+    }
+    case WM_COMMAND:
+        switch (LOWORD(wParam)) {
+        case 3: // 3번 버튼의 ID를 사용해야 합니다.
+            // 이미지 리소스를 로드
+            HBITMAP hBitmap = LoadBitmap(hInstance, MAKEINTRESOURCE(ID_BONOBONO1));
+            if (hBitmap != NULL) {
+                // 드로잉 영역의 위치와 크기 가져오기
+                RECT drawingAreaRect;
+                GetWindowRect(hDrawingArea, &drawingAreaRect);
+
+                // 드로잉 영역의 상대적 위치 계산
+                POINT pt = { 0, 0 };
+                ScreenToClient(hwnd, &pt);
+                OffsetRect(&drawingAreaRect, pt.x, pt.y);
+
+                // 이미지의 크기 가져오기
+                BITMAP bitmapInfo;
+                GetObject(hBitmap, sizeof(BITMAP), &bitmapInfo);
+
+                HDC hdc = GetDC(hwnd);
+                HDC hdcMem = CreateCompatibleDC(hdc);
+                SelectObject(hdcMem, hBitmap);
+
+                // 이미지를 드로잉 영역 위에 중앙에 그릴 위치 계산
+                int x = drawingAreaRect.left + (drawingAreaRect.right - drawingAreaRect.left - bitmapInfo.bmWidth) / 2;
+                int y = drawingAreaRect.top + (drawingAreaRect.bottom - drawingAreaRect.top - bitmapInfo.bmHeight) / 2;
+
+                BitBlt(hdc, x, y, bitmapInfo.bmWidth, bitmapInfo.bmHeight, hdcMem, 0, 0, SRCCOPY);
+
+                DeleteDC(hdcMem);
+                ReleaseDC(hwnd, hdc);
+            }
+            break;
+        }
+        break;
+
+    default:
+        return DefWindowProc(hwnd, msg, wParam, lParam);
+    }
+    return 0;
+}
