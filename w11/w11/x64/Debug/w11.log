@@ -1,0 +1,3 @@
+﻿  w11.cpp
+C:\Users\YUHAN\source\repos\w11\w11\w11.cpp(36): warning C4715: 'y_stack::top': 모든 제어 경로에서 값을 반환하지는 않습니다.
+  w11.vcxproj -> C:\Users\YUHAN\source\repos\w11\x64\Debug\w11.exe
