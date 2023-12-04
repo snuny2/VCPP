@@ -130,9 +130,6 @@
     <ClInclude Include="yuhanCG.h" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="..\Ryan.png" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="yuhanCG.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

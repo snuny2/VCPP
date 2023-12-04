@@ -10,9 +10,17 @@ HWND hDrawingArea = NULL;
 
 HINSTANCE hInstance = GetModuleHandle(NULL);
 
-enum ShapeType {
-	SHAPE_NONE,
-};
+// 전역 변수
+HBRUSH g_hBrush = NULL;
+bool g_isDrawing = false;  // 드래그 중인지 여부를 나타내는 플래그
+bool g_buttonPressed = false;  // 버튼이 눌렸는지 여부를 나타내는 플래그
+bool g_drawRectangle = false;  // 사각형을 그릴지 여부를 나타내는 플래그
+POINT g_startPoint;        // 드래그 시작 지점
+RECT g_drawnShape = { 0, 0, 0, 0 };  // 그려진 도형의 좌표
+
+// 현재 커서 모양 저장 변수
+HCURSOR g_hCursorCross = NULL;
+HCURSOR g_hCursorArrow = NULL;
 
 static bool isDrawingCircle = false;
 static bool isDrawing = false;   // 드래그 중인 상태 여부를 저장하는 변수
@@ -20,18 +28,34 @@ static POINT startDrag = { 0 };  // 드래그 시작 지점
 static POINT endDrag = { 0 };
 static POINT startCircle = { 0 };  // 드래그 시작 지점
 static POINT endCircle = { 0 };
-// 원그리기
-void DrawCircle(HDC hdc, POINT start, POINT end) {
-	int radius = static_cast<int>(sqrt(pow(end.x - start.x, 2) + pow(end.y - start.y, 2)));
 
-	// 원 그리기
-	Ellipse(hdc, start.x - radius, start.y - radius, start.x + radius, start.y + radius);
+// 원 그리기 함수
+void DrawEllipse(HDC hdc, int x1, int y1, int x2, int y2) {
+	SelectObject(hdc, g_hBrush);
+	Ellipse(hdc, x1, y1, x2, y2);
 }
-// 도형 지우기 함수
-void EraseShape(HWND hWnd) {
-	bool isShapeVisible = false;
-	ShapeType currentShape = SHAPE_NONE; // 아무 도형도 선택되지 않은 상태로 초기화
-	InvalidateRect(hWnd, NULL, TRUE);
+
+// 사각형 그리기 함수
+void DrawRectangle(HDC hdc, int x1, int y1, int x2, int y2) {
+	SelectObject(hdc, g_hBrush);
+	Rectangle(hdc, x1, y1, x2, y2);
+}
+
+// 이전에 그린 원을 지우는 함수
+void ErasePreviousEllipse(HWND hwnd, RECT rect) {
+	HDC hdc = GetDC(hwnd);
+	FillRect(hdc, &rect, (HBRUSH)GetStockObject(WHITE_BRUSH)); // 흰색으로 이전에 그린 원을 지웁니다.
+	ReleaseDC(hwnd, hdc);
+}
+
+// 커서 모양 설정 함수
+void SetCursorShape(HWND hwnd, bool isDrawing) {
+	if (isDrawing) {
+		SetCursor(g_hCursorCross);
+	}
+	else {
+		SetCursor(g_hCursorArrow);
+	}
 }
 
 void DrawRectangle(HDC hdc, POINT start, POINT end) {
@@ -72,6 +96,7 @@ void DrawCube(HDC hdc, POINT start, POINT end) {
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+	g_hBrush = CreateSolidBrush(RGB(0, 255, 0)); // 연두색
 	// 윈도우 클래스 등록
 	WNDCLASS wc = { 0 };
 	wc.lpfnWndProc = WndProc;
@@ -159,18 +184,26 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 		EndPaint(hwnd, &ps);
 		break;
 	}
-	
+
 	case WM_CREATE: {
+		// 십자가 형태의 커서 생성
+		g_hCursorCross = LoadCursor(NULL, IDC_CROSS);
+		// 기본 화살표 커서 생성
+		g_hCursorArrow = LoadCursor(NULL, IDC_ARROW);
 		return 0;
 	}
 	case WM_COMMAND: {
+		bool eraseDrawingArea = false;
 		switch (LOWORD(wParam)) {
-		
+
 		case 1: {
-			
+			g_buttonPressed = true;  // 두 번째 버튼이 눌렸음을 표시
+			g_drawRectangle = true;   // 사각형 그리기 모드 설정
 			break;
 		}
 		case 2: {
+			g_buttonPressed = true;  // 버튼이 눌렸음을 표시
+			g_drawRectangle = false;  // 사각형 그리기 모드 해제
 			break;
 		}
 		case 3: {
@@ -258,10 +291,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 			break;
 		}
 		case 5: {
+			g_buttonPressed = true;  // 두 번째 버튼이 눌렸음을 표시
+			g_drawRectangle = true;   // 사각형 그리기 모드 설정
 			break;
 		}
 		default:
-			  break;
+			break;
+			// 버튼 클릭 후 드로잉 처리
+			if (eraseDrawingArea) {
+				// 드로잉 영역을 지우는 코드
+				ErasePreviousEllipse(hDrawingArea, g_drawnShape);
+				// 다른 지우기 동작이 필요하면 여기에 추가
+
+				// 지우기 플래그를 다시 초기화
+				eraseDrawingArea = false;
+			}
 		case WM_KEYDOWN: {
 			if (wParam == VK_SPACE) {
 				isLineEyes = !isLineEyes;
@@ -296,48 +340,59 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 }
 
 LRESULT CALLBACK DrawingAreaProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-	
+
 	switch (msg) {
 	case WM_LBUTTONDOWN: {
-		// 왼쪽 마우스 버튼이 눌러질 때 시작 좌표를 기록
-		startDrag.x = LOWORD(lParam);
-		startDrag.y = HIWORD(lParam);
-		isDrawing = true;
+		// 마우스 왼쪽 버튼이 눌렸을 때 드래그 시작
+		if (g_buttonPressed) {
+			g_isDrawing = true;
+			g_startPoint.x = LOWORD(lParam);
+			g_startPoint.y = HIWORD(lParam);
+
+			// 새로운 드래그 시작 지점에서 원을 지우지 않도록
+			ErasePreviousEllipse(hwnd, g_drawnShape);
+		}
 		break;
 	}
 	case WM_LBUTTONUP: {
-		// 왼쪽 마우스 버튼이 떼어질 때 끝 좌표를 기록하고 그림을 그림
-		endDrag.x = LOWORD(lParam);
-		endDrag.y = HIWORD(lParam);
-		isDrawing = false;
-
-		// 화면을 갱신하여 정육면체를 그림
-		RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE);
+		// 마우스 왼쪽 버튼이 떼어졌을 때 드래그 종료
+		g_isDrawing = false;
+		SetCursorShape(hwnd, g_isDrawing);  // 드래그 종료 후 커서 모양 복구
 		break;
 	}
 	case WM_MOUSEMOVE: {
-		if (isDrawing) {
-			// 마우스가 이동 중일 때, 현재 좌표를 기록하고 그림을 그림
-			endDrag.x = LOWORD(lParam);
-			endDrag.y = HIWORD(lParam);
+		// 마우스 이동 중인 경우, 드래그 중인지 확인 후 원을 그림
+		if (g_isDrawing) {
+			ErasePreviousEllipse(hwnd, g_drawnShape);  // 이전에 그린 원 지우기
 
-			// 화면을 갱신하여 정육면체를 그림
-			RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE);
+			HDC hdc = GetDC(hwnd);
+			int currentX = LOWORD(lParam);
+			int currentY = HIWORD(lParam);
+			if (g_drawRectangle) {
+				DrawRectangle(hdc, g_startPoint.x, g_startPoint.y, currentX, currentY);
+				g_drawnShape = { g_startPoint.x, g_startPoint.y, currentX, currentY };
+			}
+			else {
+				DrawEllipse(hdc, g_startPoint.x, g_startPoint.y, currentX, currentY);
+				g_drawnShape = { g_startPoint.x, g_startPoint.y, currentX, currentY };
+			}
+			ReleaseDC(hwnd, hdc);
 		}
-		else if (isDrawingCircle) {
-			// 원 그리기
-			endCircle.x = LOWORD(lParam);
-			endCircle.y = HIWORD(lParam);
-
-			// 화면을 갱신하여 원을 그림
-			RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE);
-		}
+		SetCursorShape(hwnd, g_isDrawing);  // 드래그 중일 때 커서 모양 설정
 		break;
 	}
 	case WM_PAINT: {
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hwnd, &ps);
-		
+
+		// 이전에 그린 도형 그리기
+		if (g_drawRectangle) {
+			DrawRectangle(hdc, g_drawnShape.left, g_drawnShape.top, g_drawnShape.right, g_drawnShape.bottom);
+		}
+		else {
+			DrawEllipse(hdc, g_drawnShape.left, g_drawnShape.top, g_drawnShape.right, g_drawnShape.bottom);
+		}
+
 		EndPaint(hwnd, &ps);
 		break;
 	}
@@ -345,25 +400,11 @@ LRESULT CALLBACK DrawingAreaProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 		switch (LOWORD(wParam)) {
 
 		case 1: {
-			// 시작 좌표와 끝 좌표를 초기화
-			startDrag = { 0 };
-			endDrag = { 0 };
-
-			// 화면을 갱신하여 정육면체를 그림
-			RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE);
+			
 			break;
 		}
 		case 2: {
-			// 시작 좌표와 끝 좌표를 초기화하여 원을 그림
-			startCircle = { 0 };
-			endCircle = { 0 };
-
-			// 정육면체 그리기 상태 변수 초기화
-			isDrawing = false;
-
-			// 화면을 갱신하여 원을 그림
-			RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE);
-			break;
+			
 		}
 		}
 	}
@@ -372,6 +413,10 @@ LRESULT CALLBACK DrawingAreaProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPar
 		break;
 	}
 	case WM_DESTROY: {
+		// 해제된 브러시 처리
+		DeleteObject(g_hBrush);
+		DestroyCursor(g_hCursorCross);
+		DestroyCursor(g_hCursorArrow);
 		PostQuitMessage(0);
 		break;
 	}
